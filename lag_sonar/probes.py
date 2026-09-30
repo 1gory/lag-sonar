@@ -125,14 +125,16 @@ def _connectivity(name: str, iface: str | None) -> Probe:
     Целей две: один провайдер может резать конкретный публичный резолвер,
     и единственная цель дала бы ложную тревогу.
     """
-    last = ""
+    failures: list[str] = []
     for host, sni in config.CONNECTIVITY_TARGETS:
         try:
             ms = _tls_handshake(host, sni, iface, config.TLS_TIMEOUT)
             return Probe(name, True, ms, extra={"target": host})
         except Exception as exc:  # noqa: BLE001
-            last = f"{host}: {_short(exc)}"
-    return Probe(name, False, detail=last or "не проходит")
+            failures.append(f"{host}: {_short(exc)}")
+    # Перечисляем все цели: сообщение про одну выглядело бы как проблема
+    # конкретно с ней, хотя не ответил никто.
+    return Probe(name, False, detail=", ".join(failures) or "не проходит")
 
 
 def probe_direct(topo: Topology) -> Probe:

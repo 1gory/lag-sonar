@@ -220,7 +220,9 @@ def test_cached_claude_result_is_reused_between_ticks():
     verdict = monitor.tick()
 
     assert verdict.core is CoreState.OK
-    assert any(row.label == "Claude API" for row in verdict.details)
+    row = next(row for row in verdict.details if row.label == "Claude API")
+    # Цифра из прошлого цикла помечена возрастом, а не выдана за свежую.
+    assert "назад" in row.value
 
 
 def test_collector_failure_does_not_break_the_loop():

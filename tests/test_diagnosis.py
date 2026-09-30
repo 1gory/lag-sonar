@@ -259,6 +259,26 @@ def test_details_cover_every_layer():
         assert word in labels
 
 
+def test_stale_claude_measurement_is_marked_as_such():
+    """API опрашивается реже сети: несвежую цифру нельзя выдавать за текущую."""
+    v = diagnose(
+        probes(
+            claude_api=Probe(
+                "claude_api", True, 700.0, extra={"status": 401, "age_s": 27.0}
+            )
+        ),
+        LINKED,
+    )
+    row = next(r for r in v.details if r.label == "Claude API")
+    assert "27 с назад" in row.value
+
+
+def test_fresh_claude_measurement_has_no_age_suffix():
+    v = diagnose(probes(), LINKED)
+    row = next(r for r in v.details if r.label == "Claude API")
+    assert "назад" not in row.value
+
+
 def test_details_report_measured_latency():
     v = diagnose(probes(), LINKED)
     values = " ".join(row.value for row in v.details)

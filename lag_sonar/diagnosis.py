@@ -15,6 +15,9 @@ from .model import CoreState, DetailRow, Probe, RingState, Topology, Verdict
 # зелёное ядро из-за того, что конкретно наш запрос прошёл.
 SEVERE_INDICATORS = frozenset({"major", "critical"})
 
+# С какого возраста замер помечается в меню как несвежий.
+STALE_AFTER_S = 5.0
+
 
 def _probe(probes: dict[str, Probe], name: str) -> Probe | None:
     return probes.get(name)
@@ -187,6 +190,11 @@ def _details(
     if api is not None:
         status = api.extra.get("status")
         suffix = f" · HTTP {status}" if status else ""
+        # API опрашивается реже сети, поэтому цифра может быть несвежей —
+        # без пометки её приняли бы за текущую.
+        age = api.extra.get("age_s", 0.0)
+        if age >= STALE_AFTER_S:
+            suffix += f" · {age:.0f} с назад"
         rows.append(
             DetailRow(
                 label="Claude API",

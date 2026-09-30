@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from typing import Callable
 
 from . import config, netinfo, probes as probe_module
@@ -82,6 +83,7 @@ class Monitor:
         self._clock = clock
 
         self._cache: dict[str, Probe] = {}
+        self._cache_time: dict[str, float] = {}
         self._last_claude: float | None = None
         self._last_status: float | None = None
 
@@ -129,6 +131,7 @@ class Monitor:
             # Сеть сменилась — прошлые замеры больше ни о чём не говорят.
             self._reset_hysteresis()
             self._cache.clear()
+            self._cache_time.clear()
             self._last_claude = None
             self._last_status = None
         self._topology = topo
@@ -152,12 +155,19 @@ class Monitor:
         if "claude_status" in fresh:
             self._last_status = now
 
-        merged = dict(self._cache)
-        merged.update(fresh)
         # Кэшируем только редкие пробы: сетевые всегда свежие.
         for name in ("claude_api", "claude_status"):
             if name in fresh:
                 self._cache[name] = fresh[name]
+                self._cache_time[name] = now
+
+        merged: dict[str, Probe] = {}
+        for name, probe in self._cache.items():
+            # Помечаем возраст: иначе полуминутной давности задержка в меню
+            # выглядит как только что измеренная.
+            age = now - self._cache_time.get(name, now)
+            merged[name] = replace(probe, extra={**probe.extra, "age_s": age})
+        merged.update(fresh)
 
         verdict = diagnose(merged, topo)
         return self._publish(verdict)
