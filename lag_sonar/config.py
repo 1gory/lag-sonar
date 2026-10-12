@@ -12,11 +12,15 @@ from pathlib import Path
 
 # --- интервалы опроса, секунды ---------------------------------------------
 
-NETWORK_INTERVAL_OK = 10.0
-NETWORK_INTERVAL_DEGRADED = 5.0
+# Часто: лаги Claude длятся 10–30 с (журнал 2026-10-02), и при опросе раз
+# в 10–30 с значок замечал их, когда они уже заканчивались.
+NETWORK_INTERVAL_OK = 2.0
+NETWORK_INTERVAL_DEGRADED = 2.0
 
-CLAUDE_INTERVAL_OK = 30.0
-CLAUDE_INTERVAL_DEGRADED = 10.0
+# Claude чуть реже сети: это запрос к чужому API, долбить его каждые 2 с
+# без нужды незачем. Пока что-то не так — опрашиваем в темпе сети.
+CLAUDE_INTERVAL_OK = 4.0
+CLAUDE_INTERVAL_DEGRADED = 2.0
 
 STATUS_INTERVAL = 300.0
 

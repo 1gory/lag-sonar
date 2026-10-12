@@ -203,8 +203,10 @@ def test_healthy_state_uses_the_relaxed_interval():
     assert monitor.interval == config.NETWORK_INTERVAL_OK
 
 
-def test_cached_claude_result_is_reused_between_ticks():
+def test_cached_claude_result_is_reused_between_ticks(monkeypatch):
     """Если API в этом тике не опрашивался, в вердикте остаётся прошлый ответ."""
+    # Редкий опрос Claude, чтобы кэш успел устареть до пометки возрастом.
+    monkeypatch.setattr(config, "CLAUDE_INTERVAL_OK", 30.0)
     clock = FakeClock()
 
     def collector(topo, need_claude, need_status):
@@ -216,7 +218,7 @@ def test_cached_claude_result_is_reused_between_ticks():
 
     monitor = Monitor(collector=collector, snapshot=lambda: LINKED, clock=clock)
     monitor.tick()
-    clock.advance(config.NETWORK_INTERVAL_OK)
+    clock.advance(10.0)
     verdict = monitor.tick()
 
     assert verdict.core is CoreState.OK

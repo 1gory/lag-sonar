@@ -38,6 +38,12 @@ def _setup_logging() -> None:
     )
 
 
+def _layers(verdict) -> str:
+    """Расклад по слоям одной строкой: `+` работает, `-` сломан, `·` не проверялся."""
+    mark = {True: "+", False: "-", None: "·"}
+    return "; ".join(f"{mark[row.ok]}{row.label}: {row.value}" for row in verdict.details)
+
+
 class LagSonarController(NSObject):
     """Контроллер значка в menu bar."""
 
@@ -95,14 +101,17 @@ class LagSonarController(NSObject):
 
         # Пишем только переходы: запись каждого цикла раздула бы журнал,
         # а интересны именно моменты, когда что-то сломалось или починилось.
+        # Расклад по слоям пишется вместе с переходом — по одному заголовку
+        # задним числом не понять, какой слой и насколько тормозил.
         if (previous.ring, previous.core) != (verdict.ring, verdict.core):
             log.info(
-                "%s/%s -> %s/%s · %s",
+                "%s/%s -> %s/%s · %s | %s",
                 previous.ring.value,
                 previous.core.value,
                 verdict.ring.value,
                 verdict.core.value,
                 verdict.headline,
+                _layers(verdict),
             )
         try:
             self._status_item.button().setImage_(icon.render(verdict.ring, verdict.core))
