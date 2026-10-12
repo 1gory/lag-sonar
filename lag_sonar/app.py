@@ -8,6 +8,8 @@
 from __future__ import annotations
 
 import logging
+import os
+import sys
 import threading
 
 import objc
@@ -34,6 +36,9 @@ def _setup_logging() -> None:
     logging.basicConfig(
         filename=str(config.LOG_PATH),
         level=logging.INFO,
+        # Явно: у запущенного из Finder приложения нет UTF-8-локали,
+        # и без этого кириллица в журнале превращается в \uXXXX.
+        encoding="utf-8",
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
 
@@ -159,7 +164,21 @@ class LagSonarController(NSObject):
         NSApplication.sharedApplication().terminate_(self)
 
 
+def _use_system_certs() -> None:
+    """В собранном .app взять системные корневые сертификаты.
+
+    OpenSSL из python.org ищет их в каталоге установленного Python. Внутри
+    автономного приложения этого каталога на чужом маке нет, и все TLS-пробы
+    падали бы с ошибкой проверки сертификата — значок врал бы «Claude не отвечает».
+    """
+    system_bundle = "/etc/ssl/cert.pem"
+    if getattr(sys, "frozen", False) and "SSL_CERT_FILE" not in os.environ:
+        if os.path.exists(system_bundle):
+            os.environ["SSL_CERT_FILE"] = system_bundle
+
+
 def main(argv: list[str] | None = None) -> int:
+    _use_system_certs()
     _setup_logging()
     log.info("lag-sonar %s запускается", __version__)
 
